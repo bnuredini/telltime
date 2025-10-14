@@ -10,3 +10,9 @@ linker_flags = '-s -X github.com/bnuredini/telltime/internal/conf.buildTime=${cu
 .PHONY: build
 build: 
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags=${linker_flags} -o=${binary_path} ${main_package_path}
+
+## run: run the application
+.PHONY: run
+run:
+	${binary_path}
+
