@@ -1,13 +1,18 @@
-package main
+// +build windows
+
+package activity
 
 import (
     "fmt"
     "syscall"
+    "database/sql"
     "unsafe"
+
+    "github.com/bnuredini/telltime/internal/conf"
 )
 
 var (
-    user32                  = syscall.NewLazyDLL("user32.dll")
+    user32                 = syscall.NewLazyDLL("user32.dll")
     kernel32               = syscall.NewLazyDLL("kernel32.dll")
     psapi                  = syscall.NewLazyDLL("psapi.dll")
 
@@ -16,21 +21,17 @@ var (
     procGetMessageW         = user32.NewProc("GetMessageW")
     procTranslateMessage    = user32.NewProc("TranslateMessage")
     procDispatchMessageW    = user32.NewProc("DispatchMessageW")
-    procGetForegroundWindow = user32.NewProc("GetForegroundWindow")
-    procGetWindowTextLength = user32.NewProc("GetWindowTextLengthW")
-    procGetWindowText       = user32.NewProc("GetWindowTextW")
-    procGetClassName		= user32.NewProc("GetClassNameW")
-
 
     procGetWindowThreadProcessId = user32.NewProc("GetWindowThreadProcessId")
-    procOpenProcess               = kernel32.NewProc("OpenProcess")
-    procCloseHandle               = kernel32.NewProc("CloseHandle")
-    procGetModuleBaseNameW        = psapi.NewProc("GetModuleBaseNameW")
+    procOpenProcess              = kernel32.NewProc("OpenProcess")
+    procCloseHandle              = kernel32.NewProc("CloseHandle")
+    procGetModuleBaseNameW       = psapi.NewProc("GetModuleBaseNameW")
 )
 
 const (
     EVENT_SYSTEM_FOREGROUND = 0x0003
     WINEVENT_OUTOFCONTEXT   = 0x0000
+
     PROCESS_QUERY_INFORMATION = 0x0400
     PROCESS_VM_READ           = 0x0010
 )
@@ -47,7 +48,7 @@ type MSG struct {
     }
 }
 
-func main() {
+func initWindows(db *sql.DB, config *conf.Config) {
     hookCallback := syscall.NewCallback(winEventProc)
 
     hHook, _, err := procSetWinEventHook.Call(
@@ -90,18 +91,17 @@ func winEventProc(
 	dwEventThread uint32,
 	dwmsEventTime uint32,
 ) uintptr {
+
 	if hwnd == 0 {
 		return 0
 	}
 
-	// Get process ID from window handle
 	var pid uint32
 	procGetWindowThreadProcessId.Call(uintptr(hwnd), uintptr(unsafe.Pointer(&pid)))
 	if pid == 0 {
 		return 0
 	}
 
-	// Open the process
 	hProcess, _, _ := procOpenProcess.Call(
 		uintptr(PROCESS_QUERY_INFORMATION|PROCESS_VM_READ),
 		0,
@@ -112,7 +112,6 @@ func winEventProc(
 	}
 	defer procCloseHandle.Call(hProcess)
 
-	// Get the executable name
 	exeName := make([]uint16, 260)
 	ret, _, _ := procGetModuleBaseNameW.Call(
 		hProcess,

@@ -1,0 +1,16 @@
+{{define "base"}}
+<html>
+<head>
+  <title>{{template "title"}} | telltime</title>
+</head>
+<body>
+  <nav>{{template "nav" .}}</nav>
+
+  <main>
+    {{template "main" .}}
+  </main>
+
+  <footer>{{template "footer" .}}</footer>
+</body>
+</html>
+{{end}}

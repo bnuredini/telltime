@@ -1,0 +1,25 @@
+{{define "title"}}Home{{end}}
+
+{{define "main"}}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div>
+  <table>
+    <thead>
+      <th>Program name</th>
+      <th>Duration</th>
+    </thead>
+    <tbody>
+      {{range .ProgramStats}}
+      <tr>
+        <td>{{.ProgramName}}</td>
+        <td>{{.DurationSecs}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+
+<script src="/static/js/home.js" type="module"></script>
+{{end}}

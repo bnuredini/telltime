@@ -1,0 +1,28 @@
+{{define "activity-table"}}
+<table>
+  <thead>
+    <td>Start</td>
+    <td>Window Class</td>
+    <td>Window Name</td>
+    <td>Duration (seconds)</td>
+  </thead>
+  <tbody>
+  {{range .WindowChangeEvents}}
+  <tr>
+      <td>
+        {{.StartTimestamp}}
+      </td>
+      <td>
+        {{.WindowClass}}
+      </td>
+      <td>
+        {{.WindowName}}
+      </td>
+      <td>
+        {{.DurationSecs}}
+      </td>
+    </tr>
+  {{end}}
+  </tbody>
+</table>
+{{end}}
