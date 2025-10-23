@@ -3,7 +3,6 @@ package httphandler
 import (
 	"database/sql"
 	"time"
-	// "fmt"
 	"log"
 	"log/slog"
 	"net/http"
