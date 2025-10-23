@@ -32,14 +32,14 @@ func (h *Handler) HomeGet(w http.ResponseWriter, r *http.Request) {
 	end := time.Now()
 	programStats, err := activity.GetProgramStats(h.DB, start, end)
 	if err != nil {
-
+		h.renderInternalServerError(w, r, err)
 		return
 	}
 
 	tmplData := templates.NewData()
 	tmplData.ProgramStats = programStats
 
-	err = templates.RenderPage(h.TemplateManager, w, "home", tmplData)
+	err = templates.RenderPage(h.TemplateManager, w, templates.PageHome, tmplData)
 	if err != nil {
 		h.renderInternalServerError(w, r, err)
 	}
@@ -57,7 +57,7 @@ func (h *Handler) ActivityGet(w http.ResponseWriter, r *http.Request) {
 	tmplData := templates.NewData()
 	tmplData.WindowChangeEvents = events
 
-	err = templates.RenderPage(h.TemplateManager, w, "activity", tmplData)
+	err = templates.RenderPage(h.TemplateManager, w, templates.PageActivity, tmplData)
 	if err != nil {
 		h.renderInternalServerError(w, r, err)
 	}
@@ -68,7 +68,8 @@ func (h *Handler) renderInternalServerError(w http.ResponseWriter, r *http.Reque
 
 	w.WriteHeader(http.StatusInternalServerError)
 
-	err = templates.RenderPage(h.TemplateManager, w, "500", templates.NewData())
+	// TODO: Pass the Request struct value to the template.
+	err = templates.RenderPage(h.TemplateManager, w, templates.Page500, templates.NewData())
 	if err != nil {
 		slog.Error("rendering failed", "err", err)
 	}

@@ -3,6 +3,7 @@ package templates
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"html/template"
 	"io/fs"
 	"log/slog"
@@ -12,6 +13,14 @@ import (
 
 	"github.com/bnuredini/telltime/ui"
 	"github.com/bnuredini/telltime/internal/services/activity"
+)
+
+type PageName string
+
+const (
+	Page500      PageName = "500"
+	PageHome     PageName = "home"
+	PageActivity PageName = "activity"
 )
 
 type TemplateManager struct {
@@ -43,6 +52,33 @@ func NewData() *templateData {
 
 var tmplFuncs = template.FuncMap{
 	"now": time.Now,
+	"formatSecs": formatSecs,
+}
+
+func formatSecs(secs uint32) string {
+	formattedHours := secs / 3600
+	formattedMins := (secs % 3600) / 60
+	formattedSecs := secs % 60
+
+	var b strings.Builder
+
+	if formattedHours > 0 {
+		fmt.Fprintf(&b, "%dh", formattedHours)
+	}
+	if formattedMins > 0 {
+		if b.Len() > 0 {
+			b.WriteByte(' ')
+		}
+		fmt.Fprintf(&b, "%dm", formattedMins)
+	}
+	if formattedSecs > 0 || b.Len() == 0 {
+		if b.Len() > 0 {
+			b.WriteByte(' ')
+		}
+		fmt.Fprintf(&b, "%ds", formattedSecs)
+	}
+
+	return b.String()
 }
 
 func newCache() (map[string]*template.Template, error) {
@@ -76,7 +112,7 @@ func newCache() (map[string]*template.Template, error) {
 func RenderPage(
 	manager *TemplateManager,
 	w http.ResponseWriter,
-	pageName string,
+	pageName PageName,
 	tmplData *templateData,
 ) error {
 

@@ -14,7 +14,7 @@
       {{range .ProgramStats}}
       <tr>
         <td>{{.ProgramName}}</td>
-        <td>{{.DurationSecs}}</td>
+        <td>{{formatSecs .DurationSecs}}</td>
       </tr>
       {{end}}
     </tbody>

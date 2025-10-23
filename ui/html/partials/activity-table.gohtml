@@ -4,7 +4,7 @@
     <td>Start</td>
     <td>Window Class</td>
     <td>Window Name</td>
-    <td>Duration (seconds)</td>
+    <td>Duration</td>
   </thead>
   <tbody>
   {{range .WindowChangeEvents}}
@@ -19,7 +19,7 @@
         {{.WindowName}}
       </td>
       <td>
-        {{.DurationSecs}}
+        {{formatSecs .DurationSecs}}
       </td>
     </tr>
   {{end}}
