@@ -1,0 +1,12 @@
+version: "2"
+sql:
+  - engine: "sqlite"
+    schema: "internal/migrations/sql/"
+    queries: "internal/queries/"
+    gen:
+      go:
+        package: "dbgen"
+        out: "internal/dbgen"
+        overrides:
+          - db_type: "integer"
+            go_type: "int64"
