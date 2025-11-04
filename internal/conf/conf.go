@@ -6,10 +6,10 @@ import (
 
 	"flag"
 	"fmt"
-	"time"
 	"log"
 	"path/filepath"
 	"reflect"
+	"time"
 )
 
 var (
@@ -18,12 +18,45 @@ var (
 )
 
 type Config struct {
-	Port               int
-	DBConnStr          string `sensitive:"yes"`
-	LogLevel           int
-	RecordWindowTitles bool
+	Port                int
+	DBConnStr           string `sensitive:"yes"`
+	LogToFile             bool
+	LogFilePath             string
+	LogLevel            int
+	RecordWindowTitles  bool
 	WindowCheckInterval int
 	SaveInterval        int
+}
+
+const (
+	ProgramName = "telltime"
+)
+
+var (
+	DefaultLogPath string
+	DefaultDatabasePath string
+)
+
+func init() {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		log.Fatalf("failed to access the home directory: %v", err)
+	}
+
+	shareDir := filepath.Join(homeDir, ".local", "share", ProgramName)
+	shareDirInfo, err := os.Stat(shareDir)
+	if os.IsNotExist(err) {
+		if err = os.Mkdir(shareDir, 0755); err != nil {
+			log.Fatalf("failed to create the share directory %q: %v", shareDir, err)
+		}
+	} else if err != nil {
+		log.Fatalf("failed to access the share directory: %v", err)
+	} else if !shareDirInfo.IsDir() {
+		log.Fatalf("%q is not a directory", shareDir)
+	}
+
+	DefaultLogPath = filepath.Join(shareDir, fmt.Sprintf("%v.log", ProgramName))
+	DefaultDatabasePath = filepath.Join(shareDir, fmt.Sprintf("%v.db", ProgramName))
 }
 
 func Init() (Config, error) {
@@ -43,6 +76,18 @@ func Init() (Config, error) {
 		"db-conn-str",
 		config.DBConnStr,
 		"The database connection string",
+	)
+	flag.BoolVar(
+		&config.LogToFile,
+		"log-to-file",
+		config.LogToFile,
+		"Determines whether logs should be outputted to a file instead of stdout (default value: false)",
+	)
+	flag.StringVar(
+		&config.LogFilePath,
+		"log-file-path",
+		DefaultLogPath,
+		"The path to the file used to store program logs. Note that this value is only used if log-to-file is set to true.",
 	)
 	flag.IntVar(
 		&config.LogLevel,
@@ -146,4 +191,8 @@ func printConfig(c Config) error {
 	log.Printf("config: %v", string(b))
 
 	return nil
+}
+
+func VersionInfo() (string, string) {
+	return buildTime, version
 }

@@ -3,15 +3,16 @@ package templates
 import (
 	"bytes"
 	"fmt"
-	"strings"
 	"html/template"
 	"io/fs"
 	"log/slog"
 	"net/http"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/bnuredini/telltime/ui"
+	"github.com/bnuredini/telltime/internal/dbgen"
 	"github.com/bnuredini/telltime/internal/services/activity"
 )
 
@@ -41,9 +42,9 @@ func NewManager() (*TemplateManager, error) {
 }
 
 type templateData struct {
-	WindowChangeEvents []*activity.WindowChangeEvent
-	CategoryStats []*activity.CategoryStat
-	ProgramStats []*activity.ProgramStat
+	WindowChangeEvents []dbgen.GetEventsRow
+	CategoryStats      []*activity.CategoryStat
+	ProgramStats       []*activity.ProgramStat
 }
 
 func NewData() *templateData {
@@ -51,11 +52,11 @@ func NewData() *templateData {
 }
 
 var tmplFuncs = template.FuncMap{
-	"now": time.Now,
+	"now":        time.Now,
 	"formatSecs": formatSecs,
 }
 
-func formatSecs(secs uint32) string {
+func formatSecs(secs int64) string {
 	formattedHours := secs / 3600
 	formattedMins := (secs % 3600) / 60
 	formattedSecs := secs % 60

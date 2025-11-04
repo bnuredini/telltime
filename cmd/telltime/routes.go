@@ -8,7 +8,7 @@ import (
 )
 
 func routes(uni *universe) http.Handler {
-	httpHandler := httphandler.New(uni.DB, uni.TemplateManager)
+	httpHandler := httphandler.New(uni.DB, uni.Queries, uni.TemplateManager)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", httpHandler.HomeGet)

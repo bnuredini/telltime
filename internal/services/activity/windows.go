@@ -1,85 +1,86 @@
+//go:build windows
 // +build windows
 
 package activity
 
 import (
-    "fmt"
-    "syscall"
-    "database/sql"
-    "unsafe"
+	"database/sql"
+	"fmt"
+	"syscall"
+	"unsafe"
 
-    "github.com/bnuredini/telltime/internal/conf"
+	"github.com/bnuredini/telltime/internal/conf"
 )
 
 var (
-    user32                 = syscall.NewLazyDLL("user32.dll")
-    kernel32               = syscall.NewLazyDLL("kernel32.dll")
-    psapi                  = syscall.NewLazyDLL("psapi.dll")
+	user32   = syscall.NewLazyDLL("user32.dll")
+	kernel32 = syscall.NewLazyDLL("kernel32.dll")
+	psapi    = syscall.NewLazyDLL("psapi.dll")
 
-    procSetWinEventHook     = user32.NewProc("SetWinEventHook")
-    procUnhookWinEvent      = user32.NewProc("UnhookWinEvent")
-    procGetMessageW         = user32.NewProc("GetMessageW")
-    procTranslateMessage    = user32.NewProc("TranslateMessage")
-    procDispatchMessageW    = user32.NewProc("DispatchMessageW")
+	procSetWinEventHook  = user32.NewProc("SetWinEventHook")
+	procUnhookWinEvent   = user32.NewProc("UnhookWinEvent")
+	procGetMessageW      = user32.NewProc("GetMessageW")
+	procTranslateMessage = user32.NewProc("TranslateMessage")
+	procDispatchMessageW = user32.NewProc("DispatchMessageW")
 
-    procGetWindowThreadProcessId = user32.NewProc("GetWindowThreadProcessId")
-    procOpenProcess              = kernel32.NewProc("OpenProcess")
-    procCloseHandle              = kernel32.NewProc("CloseHandle")
-    procGetModuleBaseNameW       = psapi.NewProc("GetModuleBaseNameW")
+	procGetWindowThreadProcessId = user32.NewProc("GetWindowThreadProcessId")
+	procOpenProcess              = kernel32.NewProc("OpenProcess")
+	procCloseHandle              = kernel32.NewProc("CloseHandle")
+	procGetModuleBaseNameW       = psapi.NewProc("GetModuleBaseNameW")
 )
 
 const (
-    EVENT_SYSTEM_FOREGROUND = 0x0003
-    WINEVENT_OUTOFCONTEXT   = 0x0000
+	EVENT_SYSTEM_FOREGROUND = 0x0003
+	WINEVENT_OUTOFCONTEXT   = 0x0000
 
-    PROCESS_QUERY_INFORMATION = 0x0400
-    PROCESS_VM_READ           = 0x0010
+	PROCESS_QUERY_INFORMATION = 0x0400
+	PROCESS_VM_READ           = 0x0010
 )
 
 type MSG struct {
-    Hwnd    uintptr
-    Message uint32
-    WParam  uintptr
-    LParam  uintptr
-    Time    uint32
-    Pt      struct {
-        X int32
-        Y int32
-    }
+	Hwnd    uintptr
+	Message uint32
+	WParam  uintptr
+	LParam  uintptr
+	Time    uint32
+	Pt      struct {
+		X int32
+		Y int32
+	}
 }
 
 func initWindows(db *sql.DB, config *conf.Config) {
-    hookCallback := syscall.NewCallback(winEventProc)
+	hookCallback := syscall.NewCallback(winEventProc)
 
-    hHook, _, err := procSetWinEventHook.Call(
-        uintptr(EVENT_SYSTEM_FOREGROUND),
-        uintptr(EVENT_SYSTEM_FOREGROUND),
-        0,
-        hookCallback,
-        0,
-        0,
-        uintptr(WINEVENT_OUTOFCONTEXT),
-    )
+	hHook, _, err := procSetWinEventHook.Call(
+		uintptr(EVENT_SYSTEM_FOREGROUND),
+		uintptr(EVENT_SYSTEM_FOREGROUND),
+		0,
+		hookCallback,
+		0,
+		0,
+		uintptr(WINEVENT_OUTOFCONTEXT),
+	)
 
-    if hHook == 0 {
-        fmt.Println("Failed to set hook:", err)
-        return
-    }
+	if hHook == 0 {
+		fmt.Println("Failed to set hook:", err)
+		return
+	}
 
-    fmt.Println("Listening for active window changes...")
+	fmt.Println("Listening for active window changes...")
 
-    var msg MSG
-    for {
-        ret, _, _ := procGetMessageW.Call(uintptr(unsafe.Pointer(&msg)), 0, 0, 0)
-        if int32(ret) == -1 {
-            break
-        }
+	var msg MSG
+	for {
+		ret, _, _ := procGetMessageW.Call(uintptr(unsafe.Pointer(&msg)), 0, 0, 0)
+		if int32(ret) == -1 {
+			break
+		}
 
-        procTranslateMessage.Call(uintptr(unsafe.Pointer(&msg)))
-        procDispatchMessageW.Call(uintptr(unsafe.Pointer(&msg)))
-    }
+		procTranslateMessage.Call(uintptr(unsafe.Pointer(&msg)))
+		procDispatchMessageW.Call(uintptr(unsafe.Pointer(&msg)))
+	}
 
-    procUnhookWinEvent.Call(hHook)
+	procUnhookWinEvent.Call(hHook)
 }
 
 func winEventProc(

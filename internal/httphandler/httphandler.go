@@ -1,35 +1,38 @@
 package httphandler
 
 import (
+	"context"
 	"database/sql"
-	"time"
-	"log"
 	"log/slog"
 	"net/http"
 	"runtime/debug"
 
-	"github.com/bnuredini/telltime/internal/templates"
+	"github.com/bnuredini/telltime/internal/dbgen"
 	"github.com/bnuredini/telltime/internal/services/activity"
+	"github.com/bnuredini/telltime/internal/templates"
 )
 
 type Handler struct {
 	DB              *sql.DB
+	Queries         *dbgen.Queries
 	TemplateManager *templates.TemplateManager
 }
 
-func New(db *sql.DB, templateManager *templates.TemplateManager) *Handler {
+func New(db *sql.DB, queries *dbgen.Queries, templateManager *templates.TemplateManager) *Handler {
 	return &Handler{
 		DB:              db,
+		Queries:         queries,
 		TemplateManager: templateManager,
 	}
 }
 
 func (h *Handler) HomeGet(w http.ResponseWriter, r *http.Request) {
-	activity.Save(h.DB)
+	if err := activity.Save(h.DB); err != nil {
+		slog.Error("serving home: failed to save activty data", "err", err)
+	}
 
-	start := time.Now().Add(-time.Hour)
-	end := time.Now()
-	programStats, err := activity.GetProgramStats(h.DB, start, end)
+	start, end := activity.GetIntervalFromStartOfDay()
+	programStats, err := activity.GetProgramStats(context.Background(), h.Queries, start, end)
 	if err != nil {
 		h.renderInternalServerError(w, r, err)
 		return
@@ -45,9 +48,12 @@ func (h *Handler) HomeGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) ActivityGet(w http.ResponseWriter, r *http.Request) {
-	activity.Save(h.DB)
-
-	events, err := activity.GetEvents(h.DB)
+	if err := activity.Save(h.DB); err != nil {
+		slog.Error("serving page for activities: failed to save activty data", "err", err)
+	}
+	// TODO: Format these values for the frontend. The NullString values should
+	// be sent to the templates. Also consider adding template function instead.
+	events, err := h.Queries.GetEvents(context.Background())
 	if err != nil {
 		h.renderInternalServerError(w, r, err)
 		return
@@ -63,10 +69,8 @@ func (h *Handler) ActivityGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) renderInternalServerError(w http.ResponseWriter, r *http.Request, err error) {
-	log.Printf("%s\n%s\n", err.Error(), debug.Stack())
-
+	slog.Error("internal server error", "err", err.Error(), "stack", debug.Stack())
 	w.WriteHeader(http.StatusInternalServerError)
-
 	// TODO: Pass the Request struct value to the template.
 	err = templates.RenderPage(h.TemplateManager, w, templates.Page500, templates.NewData())
 	if err != nil {

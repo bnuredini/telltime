@@ -2,7 +2,6 @@ package activity
 
 import (
 	"database/sql"
-	"log"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -19,7 +18,7 @@ import (
 func initLinux(db *sql.DB, config *conf.Config) {
 	xUtil, err := xgbutil.NewConn()
 	if err != nil {
-		log.Fatalf("failed to establish a connection with X: %v", err)
+		slog.Error("failed to establish a connection with X", "err", err)
 	}
 	defer xUtil.Conn().Close()
 
@@ -55,7 +54,7 @@ loop:
 func checkWindow(xUtil *xgbutil.XUtil, config *conf.Config) {
 	xWindowID, err := ewmh.ActiveWindowGet(xUtil)
 	if err != nil {
-		log.Fatalf("failed to get the current active window: %v", err)
+		slog.Error("failed to get the current active window", "err", err)
 	}
 
 	xWindowClassResult, err := icccm.WmClassGet(xUtil, xWindowID)

@@ -9,12 +9,14 @@ import (
 	"os"
 
 	"github.com/bnuredini/telltime/internal/conf"
+	"github.com/bnuredini/telltime/internal/dbgen"
 	"github.com/bnuredini/telltime/internal/services/activity"
 	"github.com/bnuredini/telltime/internal/templates"
 )
 
 type universe struct {
 	DB              *sql.DB
+	Queries         *dbgen.Queries
 	Config          *conf.Config
 	TemplateManager *templates.TemplateManager
 }
@@ -26,33 +28,39 @@ func main() {
 		log.Fatalf("failed to parse the config: %v", err)
 	}
 
-	slog.SetLogLoggerLevel(slog.Level(config.LogLevel))
+	setUpLogging(&config)
 
-	db, err := openDB(config.DBConnStr)
+	dbConn, err := openDB(config.DBConnStr)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer db.Close()
+	defer dbConn.Close()
 
+	queries := dbgen.New(dbConn)
 	templateManager, err := templates.NewManager()
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	uni := &universe{
-		DB:              db,
+		DB:              dbConn,
+		Queries:         queries,
 		Config:          &config,
 		TemplateManager: templateManager,
 	}
 
+
 	go func() {
+		version, buildTime := conf.VersionInfo()
+		slog.Info("staritng the server", "version", version, "buildTime", buildTime)
+
 		if err = startServer(uni); err != nil {
 			slog.Error("failed to serve", "err", err)
 			os.Exit(1)
 		}
 	}()
 
-	activity.Init(db, &config)
+	activity.Init(dbConn, &config)
 }
 
 func startServer(uni *universe) error {
@@ -65,4 +73,18 @@ func startServer(uni *universe) error {
 	}
 
 	return nil
+}
+
+func setUpLogging(config *conf.Config) {
+	if config.LogToFile {
+		logFile, err := os.OpenFile(config.LogFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+		if err != nil {
+			log.Fatalf("failed to create %q: %v", config.LogFilePath, err)
+		}
+
+		logOpts := &slog.HandlerOptions{Level: slog.Level(config.LogLevel)}
+		logHandler := slog.NewTextHandler(logFile, logOpts)
+		logger := slog.New(logHandler)
+		slog.SetDefault(logger)
+	}
 }

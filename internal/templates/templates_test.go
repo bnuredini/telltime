@@ -5,8 +5,8 @@ import (
 )
 
 func TestFormatSecs(t *testing.T) {
-	tests := []struct{
-		input uint32
+	tests := []struct {
+		input          uint32
 		expectedOutput string
 	}{
 		{0, "0s"},

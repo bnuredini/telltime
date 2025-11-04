@@ -10,16 +10,16 @@
   {{range .WindowChangeEvents}}
   <tr>
       <td>
-        {{.StartTimestamp}}
+        {{.StartTime}}
       </td>
       <td>
         {{.WindowClass}}
       </td>
       <td>
-        {{.WindowName}}
+        {{.WindowTitle}}
       </td>
       <td>
-        {{formatSecs .DurationSecs}}
+        {{formatSecs .Duration}}
       </td>
     </tr>
   {{end}}

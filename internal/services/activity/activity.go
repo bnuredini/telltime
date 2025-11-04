@@ -1,15 +1,20 @@
 package activity
 
 import (
+	"context"
 	"database/sql"
-	"runtime"
 	"fmt"
-	"log"
 	"log/slog"
+	"runtime"
 	"strings"
 	"time"
 
 	"github.com/bnuredini/telltime/internal/conf"
+	"github.com/bnuredini/telltime/internal/dbgen"
+)
+
+const (
+	StartOfDayHour = 4
 )
 
 type WindowChangeEvent struct {
@@ -30,10 +35,8 @@ type WindowInfo struct {
 var windowChanges []*WindowChangeEvent
 var lastWindow *WindowInfo
 
-// TOOD: StartTimestamp and EndTimestamp
-
 type Stat struct {
-	DurationSecs   uint32
+	DurationSecs   int64
 	StartTimestamp time.Time
 	EndTimestamp   time.Time
 }
@@ -65,7 +68,7 @@ func Init(db *sql.DB, config *conf.Config) {
 }
 
 func handleGracefulShutdown(db *sql.DB) {
-	log.Printf("graceful shutdown: cleaning up...")
+	slog.Info("graceful shutdown: cleaning up...")
 
 	if lastWindow != nil {
 		event := &WindowChangeEvent{
@@ -77,13 +80,15 @@ func handleGracefulShutdown(db *sql.DB) {
 		}
 		windowChanges = append(windowChanges, event)
 
-		Save(db)
+		if err := Save(db); err != nil {
+			slog.Error("shutting down: failed to save activity data", "err", err)
+		}
 	}
 }
 
-func Save(db *sql.DB) {
+func Save(db *sql.DB) error {
 	if len(windowChanges) == 0 {
-		return
+		return nil
 	}
 
 	// TODO: Refreshing the /activity page will lead many rows even if there are no window changes.
@@ -124,107 +129,28 @@ func Save(db *sql.DB) {
 	_, err := db.Exec(stmt, args...)
 	if err != nil {
 		slog.Error("failed to save data", "err", err)
+		return err
 	}
 
 	windowChanges = []*WindowChangeEvent{}
+
+	return nil
 }
 
-func GetEvent(db *sql.DB, id string) (*WindowChangeEvent, error) {
-	result := &WindowChangeEvent{}
-	var startTimestamp int64
+func GetProgramStats(
+	ctx context.Context,
+	q *dbgen.Queries,
+	start time.Time,
+	end time.Time,
+) ([]*ProgramStat, error) {
 
-	stmt := `
-		SELECT start_time, window_class, window_title, duration
-		FROM event
-		WHERE id = $1
-	`
-	err := db.QueryRow(stmt, id).Scan(
-		&startTimestamp,
-		&result.WindowClass,
-		&result.WindowName,
-		&result.DurationSecs,
+	events, err := q.GetEventsByTime(
+		ctx,
+		dbgen.GetEventsByTimeParams{
+			StartTime: start.Unix(),
+			EndTime:   end.Unix(),
+		},
 	)
-	if err != nil {
-		return nil, err
-	}
-
-	result.StartTimestamp = time.Unix(startTimestamp, 0)
-
-	return result, nil
-}
-
-func GetEvents(db *sql.DB) ([]*WindowChangeEvent, error) {
-	result := []*WindowChangeEvent{}
-
-	stmt := `
-		SELECT start_time, window_class, window_title, duration
-		FROM event
-		ORDER BY start_time DESC
-	`
-	rows, err := db.Query(stmt)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		event := &WindowChangeEvent{}
-		var startTimestamp int64
-
-		rows.Scan(
-			&startTimestamp,
-			&event.WindowClass,
-			&event.WindowName,
-			&event.DurationSecs,
-		)
-
-		event.StartTimestamp = time.Unix(startTimestamp, 0)
-
-		result = append(result, event)
-	}
-
-	return result, nil
-}
-
-func GetEventsByTime(db *sql.DB, start, end time.Time) ([]*WindowChangeEvent, error) {
-	result := []*WindowChangeEvent{}
-
-	// TODO: Make sure that events don't exceed end time.
-
-	stmt := `
-		SELECT start_time, window_class, window_title, duration
-		FROM event
-		WHERE
-			start_time BETWEEN $1 AND $2
-		ORDER BY start_time DESC
-	`
-	rows, err := db.Query(stmt, start.Unix(), end.Unix())
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		event := &WindowChangeEvent{}
-		var startTimestamp int64
-
-		rows.Scan(
-			&startTimestamp,
-			&event.WindowClass,
-			&event.WindowName,
-			&event.DurationSecs,
-		)
-
-		event.StartTimestamp = time.Unix(startTimestamp, 0)
-
-		result = append(result, event)
-	}
-
-	return result, nil
-}
-
-func GetProgramStats(db *sql.DB, start, end time.Time) ([]*ProgramStat, error) {
-	events, err := GetEventsByTime(db, start, end)
 	if err != nil {
 		return nil, err
 	}
@@ -236,7 +162,7 @@ func GetProgramStats(db *sql.DB, start, end time.Time) ([]*ProgramStat, error) {
 		if !ok {
 			stats[e.WindowClass] = &ProgramStat{ProgramName: e.WindowClass}
 		} else {
-			stat.DurationSecs += e.DurationSecs
+			stat.DurationSecs += e.Duration
 		}
 	}
 
@@ -282,4 +208,16 @@ func updateCurrentActivity(windowID, windowClass, windowName string) {
 	if newWindow != nil {
 		lastWindow = newWindow
 	}
+}
+
+func GetIntervalFromStartOfDay() (start time.Time, end time.Time) {
+	now := time.Now()
+	if now.Hour() > StartOfDayHour {
+		start = time.Date(now.Year(), now.Month(), now.Day(), 4, 0, 0, 0, now.Location())
+	} else {
+		yesterday := now.AddDate(-1, 0, 0)
+		start = time.Date(yesterday.Year(), yesterday.Month(), yesterday.Day() - 1, 4, 0, 0, 0, now.Location())
+	}
+
+	return start, now
 }
