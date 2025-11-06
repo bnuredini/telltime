@@ -212,11 +212,11 @@ func updateCurrentActivity(windowID, windowClass, windowName string) {
 
 func GetIntervalFromStartOfDay() (start time.Time, end time.Time) {
 	now := time.Now()
-	if now.Hour() > StartOfDayHour {
+	if now.Hour() >= StartOfDayHour {
 		start = time.Date(now.Year(), now.Month(), now.Day(), 4, 0, 0, 0, now.Location())
 	} else {
-		yesterday := now.AddDate(-1, 0, 0)
-		start = time.Date(yesterday.Year(), yesterday.Month(), yesterday.Day() - 1, 4, 0, 0, 0, now.Location())
+		yesterday := now.AddDate(0, 0, -1)
+		start = time.Date(yesterday.Year(), yesterday.Month(), yesterday.Day(), 4, 0, 0, 0, now.Location())
 	}
 
 	return start, now
