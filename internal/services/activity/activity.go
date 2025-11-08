@@ -144,6 +144,7 @@ func GetProgramStats(
 	end time.Time,
 ) ([]*ProgramStat, error) {
 
+	result := []*ProgramStat{}
 	events, err := q.GetEventsByTime(
 		ctx,
 		dbgen.GetEventsByTimeParams{
@@ -156,7 +157,6 @@ func GetProgramStats(
 	}
 
 	stats := make(map[string]*ProgramStat)
-
 	for _, e := range events {
 		stat, ok := stats[e.WindowClass]
 		if !ok {
@@ -165,8 +165,6 @@ func GetProgramStats(
 			stat.DurationSecs += e.Duration
 		}
 	}
-
-	result := []*ProgramStat{}
 
 	for _, s := range stats {
 		s.StartTimestamp = start
