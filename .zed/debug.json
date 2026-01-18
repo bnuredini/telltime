@@ -1,0 +1,11 @@
+  {
+    "configurations": [
+      {
+        "name": "Telltime (Debug)",
+        "type": "go",
+        "request": "launch",
+        "mode": "debug",
+        "program": "./cmd/telltime"
+      }
+    ]
+  }
