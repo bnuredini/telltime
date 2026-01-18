@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bnuredini/telltime/ui"
 	"github.com/bnuredini/telltime/internal/dbgen"
 	"github.com/bnuredini/telltime/internal/services/activity"
+	"github.com/bnuredini/telltime/ui"
 )
 
 type PageName string

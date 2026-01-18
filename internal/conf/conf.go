@@ -20,8 +20,8 @@ var (
 type Config struct {
 	Port                int
 	DBConnStr           string `sensitive:"yes"`
-	LogToFile             bool
-	LogFilePath             string
+	LogToFile           bool
+	LogFilePath         string
 	LogLevel            int
 	RecordWindowTitles  bool
 	WindowCheckInterval int
@@ -33,7 +33,7 @@ const (
 )
 
 var (
-	DefaultLogPath string
+	DefaultLogPath      string
 	DefaultDatabasePath string
 )
 

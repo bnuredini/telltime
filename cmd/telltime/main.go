@@ -12,6 +12,8 @@ import (
 	"github.com/bnuredini/telltime/internal/dbgen"
 	"github.com/bnuredini/telltime/internal/services/activity"
 	"github.com/bnuredini/telltime/internal/templates"
+
+	_ "modernc.org/sqlite"
 )
 
 type universe struct {
@@ -49,7 +51,6 @@ func main() {
 		TemplateManager: templateManager,
 	}
 
-
 	go func() {
 		version, buildTime := conf.VersionInfo()
 		slog.Info("staritng the server", "version", version, "buildTime", buildTime)
@@ -61,6 +62,19 @@ func main() {
 	}()
 
 	activity.Init(dbConn, &config)
+}
+
+func openDB(dbConnStr string) (*sql.DB, error) {
+	dbConn, err := sql.Open("sqlite", dbConnStr)
+	if err != nil {
+		return nil, fmt.Errorf("opening DB connection: %v", err)
+	}
+
+	if err = dbConn.Ping(); err != nil {
+		return nil, fmt.Errorf("pinging the DB: %v", err)
+	}
+
+	return dbConn, nil
 }
 
 func startServer(uni *universe) error {
@@ -77,7 +91,11 @@ func startServer(uni *universe) error {
 
 func setUpLogging(config *conf.Config) {
 	if config.LogToFile {
-		logFile, err := os.OpenFile(config.LogFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+		logFile, err := os.OpenFile(
+			config.LogFilePath,
+			os.O_APPEND|os.O_CREATE|os.O_WRONLY,
+			0666,
+		)
 		if err != nil {
 			log.Fatalf("failed to create %q: %v", config.LogFilePath, err)
 		}

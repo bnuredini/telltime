@@ -32,9 +32,6 @@ type WindowInfo struct {
 	WindowName     string
 }
 
-var windowChanges []*WindowChangeEvent
-var lastWindow *WindowInfo
-
 type Stat struct {
 	DurationSecs   int64
 	StartTimestamp time.Time
@@ -58,31 +55,17 @@ const (
 	OS_WINDOWS = "windows"
 )
 
+var windowChanges []*WindowChangeEvent
+var lastWindow *WindowInfo
+
 func Init(db *sql.DB, config *conf.Config) {
 	switch runtime.GOOS {
 	case OS_LINUX:
 		initLinux(db, config)
 	case OS_WINDOWS:
 		initWindows(db, config)
-	}
-}
-
-func handleGracefulShutdown(db *sql.DB) {
-	slog.Info("graceful shutdown: cleaning up...")
-
-	if lastWindow != nil {
-		event := &WindowChangeEvent{
-			StartTimestamp: lastWindow.StartTimestamp,
-			WindowID:       lastWindow.WindowID,
-			WindowClass:    lastWindow.WindowClass,
-			WindowName:     lastWindow.WindowName,
-			DurationSecs:   uint32(time.Since(lastWindow.StartTimestamp).Seconds()),
-		}
-		windowChanges = append(windowChanges, event)
-
-		if err := Save(db); err != nil {
-			slog.Error("shutting down: failed to save activity data", "err", err)
-		}
+	case OS_DARWIN:
+		initMacOS(db, config)
 	}
 }
 
@@ -176,6 +159,18 @@ func GetProgramStats(
 	return result, nil
 }
 
+func GetIntervalFromStartOfDay() (start time.Time, end time.Time) {
+	now := time.Now()
+	if now.Hour() >= StartOfDayHour {
+		start = time.Date(now.Year(), now.Month(), now.Day(), 4, 0, 0, 0, now.Location())
+	} else {
+		yesterday := now.AddDate(0, 0, -1)
+		start = time.Date(yesterday.Year(), yesterday.Month(), yesterday.Day(), 4, 0, 0, 0, now.Location())
+	}
+
+	return start, now
+}
+
 func updateCurrentActivity(windowID, windowClass, windowName string) {
 	firstEvent := lastWindow == nil
 	windowChanged := lastWindow != nil && lastWindow.WindowID != windowID
@@ -208,14 +203,21 @@ func updateCurrentActivity(windowID, windowClass, windowName string) {
 	}
 }
 
-func GetIntervalFromStartOfDay() (start time.Time, end time.Time) {
-	now := time.Now()
-	if now.Hour() >= StartOfDayHour {
-		start = time.Date(now.Year(), now.Month(), now.Day(), 4, 0, 0, 0, now.Location())
-	} else {
-		yesterday := now.AddDate(0, 0, -1)
-		start = time.Date(yesterday.Year(), yesterday.Month(), yesterday.Day(), 4, 0, 0, 0, now.Location())
-	}
+func handleGracefulShutdown(db *sql.DB) {
+	slog.Info("graceful shutdown: cleaning up...")
 
-	return start, now
+	if lastWindow != nil {
+		event := &WindowChangeEvent{
+			StartTimestamp: lastWindow.StartTimestamp,
+			WindowID:       lastWindow.WindowID,
+			WindowClass:    lastWindow.WindowClass,
+			WindowName:     lastWindow.WindowName,
+			DurationSecs:   uint32(time.Since(lastWindow.StartTimestamp).Seconds()),
+		}
+		windowChanges = append(windowChanges, event)
+
+		if err := Save(db); err != nil {
+			slog.Error("shutting down: failed to save activity data", "err", err)
+		}
+	}
 }

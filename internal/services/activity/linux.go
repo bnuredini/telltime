@@ -15,6 +15,12 @@ import (
 	"github.com/bnuredini/telltime/internal/conf"
 )
 
+type LinuxWindowCheckResult struct {
+	ParsedXWindowID string
+	XWindowClass string
+	XWindowName string
+}
+
 func initLinux(db *sql.DB, config *conf.Config) {
 	xUtil, err := xgbutil.NewConn()
 	if err != nil {
@@ -32,17 +38,22 @@ func initLinux(db *sql.DB, config *conf.Config) {
 	defer windowCheckTicker.Stop()
 	defer saveTicker.Stop()
 
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	signalC := make(chan os.Signal, 1)
+	signal.Notify(signalC, syscall.SIGINT, syscall.SIGTERM)
 
 loop:
 	for {
 		select {
 		case <-windowCheckTicker.C:
-			checkWindow(xUtil, config)
+			result := checkLinuxWindow(xUtil, config)
+			updateCurrentActivity(
+				result.ParsedXWindowID,
+				result.XWindowClass,
+				result.XWindowName,
+			)
 		case <-saveTicker.C:
 			Save(db)
-		case <-sigChan:
+		case <-signalC:
 			handleGracefulShutdown(db)
 			break loop
 		}
@@ -51,7 +62,7 @@ loop:
 	os.Exit(0)
 }
 
-func checkWindow(xUtil *xgbutil.XUtil, config *conf.Config) {
+func checkLinuxWindow(xUtil *xgbutil.XUtil, config *conf.Config) LinuxWindowCheckResult {
 	xWindowID, err := ewmh.ActiveWindowGet(xUtil)
 	if err != nil {
 		slog.Error("failed to get the current active window", "err", err)
@@ -86,5 +97,9 @@ func checkWindow(xUtil *xgbutil.XUtil, config *conf.Config) {
 		xWindowClass = xWindowClassResult.Class
 	}
 
-	updateCurrentActivity(parsedXWindowID, xWindowClass, xWindowName)
+	return LinuxWindowCheckResult{
+		ParsedXWindowID: parsedXWindowID,
+		XWindowClass: xWindowClass,
+		XWindowName: xWindowName,
+	}
 }
