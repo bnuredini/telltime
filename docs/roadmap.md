@@ -15,9 +15,9 @@
 * Desktop tray icon
 * Self-hostable
 * Local-first
-* Exporting
-* Importing
-* Desktop application
+* Exporting & importing
+* A desktop application for viewing the stats
+* Omitting certain programs from activity watching
 * Data encryption
 * A configuration file
 * Notifications with weekly and monthly reports
