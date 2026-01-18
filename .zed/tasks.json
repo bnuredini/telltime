@@ -1,0 +1,12 @@
+[
+  {
+    "label": "Build",
+    "command": "make build",
+    "hide": "on_success",
+  },
+  {
+    "label": "Run",
+    "command": "make run",
+    "hide": "on_success",
+  },
+]
