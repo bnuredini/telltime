@@ -1,2 +1,24 @@
+# Temporary files
 tmp/
+wip-*
+__debug_bin*
+
+# Dist/output files
 bin/
+dist/
+out/
+output.min.css
+
+# Environment files
+local.env
+infra/secrets.env
+infra/secrets.grafana.env
+special_envs.fisht.min.css
+
+dev_conf.go
+.idea/
+.DS_Store
+*.log
+
+docs/todo.md
+trivy/
