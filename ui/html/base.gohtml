@@ -6,11 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{template "title"}} | telltime</title>
   <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js" integrity="sha384-/TgkGk7p307TH7EXJDuUlgG3Ce1UVolAOFopFekQkkXihi5u/6OCvVKyz1W+idaz" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="/static/css/output.min.css">
 </head>
 <body>
   <nav>{{template "nav" .}}</nav>
 
-  <main>
+  <main class="grid grid-cols-[1fr_min(100ch,100%)_1fr]">
     {{template "main" .}}
   </main>
 
