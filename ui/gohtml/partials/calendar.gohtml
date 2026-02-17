@@ -1,6 +1,43 @@
 {{define "calendar"}}
-<div class="max-w-xs">
-  <h3 class="h3 mb-2">{{.Day}} {{.MonthName}}</h3>
+
+{{$dateForPrevMonth := ""}}
+{{if (eq .Month 1)}}
+  {{$dateForPrevMonth = (printf "%04d-%02d-01" (add .Year -1) 12)}}
+{{else}}
+  {{$dateForPrevMonth = (printf "%04d-%02d-01" .Year (add .Month -1))}}
+{{end}}
+
+{{$dateForNextMonth := ""}}
+{{if (eq .Month 12)}}
+  {{$dateForNextMonth = (printf "%04d-%02d-01" (add .Year 1) 1)}}
+{{else}}
+  {{$dateForNextMonth = (printf "%04d-%02d-01" .Year (add .Month 1))}}
+{{end}}
+
+<div id="calendar" class="max-w-xs my-2">
+  <div class="flex">
+    <button
+      data-date="{{$dateForPrevMonth}}"
+      hx-get="/calendar/select"
+      hx-swap="outerHTML"
+      hx-target="#calendar"
+      hx-vals="js:{'selected-date': this.dataset.date}"
+      class="w-7 h-7 rounded-full bg-black hover:bg-gray-700 text-white font-semibold cursor-pointer"
+    >
+      <
+    </button>
+    <h3 class="flex-1 h3 mb-2 text-center">{{.MonthName}} {{.Year}}</h3>
+    <button
+      data-date="{{$dateForNextMonth}}"
+      hx-get="/calendar/select"
+      hx-swap="outerHTML"
+      hx-target="#calendar"
+      hx-vals="js:{'selected-date': this.dataset.date}"
+      class="w-7 h-7 rounded-full bg-black hover:bg-gray-700 text-white font-semibold cursor-pointer"
+    >
+      >
+    </button>
+  </div>
 
   <div class="grid grid-cols-7 justify-items-center mb-2">
     <div>Mon</div>
@@ -19,13 +56,17 @@
 
     {{range .MonthDays}}
     <button
+      data-date='{{printf "%04d-%02d-%02d" $.Year $.Month (add . 1)}}'
+      hx-get="/calendar/select"
+      hx-swap="outerHTML"
+      hx-target="#calendar"
+      hx-vals='js:{"selected-date": this.dataset.date}'
       class="
         flex items-center justify-center w-7 h-7 border cursor-pointer hover:bg-slate-200
         {{if (eq $.Day (add . 1))}}
         bg-slate-800 hover:bg-slate-800 text-white
         {{end}}
       "
-      hx-get="/calendar/select"
     >
       {{(add . 1)}}
     </button>

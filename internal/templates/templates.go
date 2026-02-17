@@ -158,7 +158,7 @@ func RenderPartial(
 	manager *Manager,
 	w http.ResponseWriter,
 	partialName string,
-	tmplData *Data,
+	tmplData any,
 ) error {
 	if manager.PartialsTemplate == nil {
 		return fmt.Errorf("partial templates were not initialized")
@@ -175,7 +175,7 @@ func writeTemplate(
 	w http.ResponseWriter,
 	tmpl *template.Template,
 	templateName string,
-	tmplData *Data,
+	tmplData any,
 ) error {
 	buf := new(bytes.Buffer)
 	err := tmpl.ExecuteTemplate(buf, templateName, tmplData)

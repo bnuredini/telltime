@@ -2,11 +2,12 @@ package httphandler
 
 import (
 	"context"
-	"time"
 	"database/sql"
+	"log"
 	"log/slog"
 	"net/http"
 	"runtime/debug"
+	"time"
 
 	"github.com/bnuredini/telltime/internal/dbgen"
 	"github.com/bnuredini/telltime/internal/services/activity"
@@ -77,15 +78,9 @@ func (h *Handler) ActivityGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) CalendarSelectGet(w http.ResponseWriter, r *http.Request) {
-	currDate := parseDate(
-		r.URL.Query().Get("curr-date"),
-		r.URL.Query().Get("time-zone"),
-		time.Now(),
-	)
+	selectedDate := parseISO8601Date(r.URL.Query().Get("selected-date"), time.Now())
 
-	tmplData := templates.NewData()
-	tmplData.CalendarData = templates.NewCalendarData(currDate)
-
+	tmplData := templates.NewCalendarData(selectedDate)
 	err := templates.RenderPartial(h.TemplateManager, w, "calendar", tmplData)
 	if err != nil {
 		h.renderInternalServerError(w, r, err)
@@ -93,7 +88,8 @@ func (h *Handler) CalendarSelectGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) renderInternalServerError(w http.ResponseWriter, r *http.Request, err error) {
-	slog.Error("internal server error", "err", err.Error(), "stack", debug.Stack())
+	log.Printf("%s\n%s\n", err.Error(), debug.Stack())
+
 	w.WriteHeader(http.StatusInternalServerError)
 	// TODO: Pass the Request struct value to the template.
 	err = templates.RenderPage(h.TemplateManager, w, templates.Page500, templates.NewData())
