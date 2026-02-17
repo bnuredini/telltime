@@ -3,6 +3,7 @@ package httphandler
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"log"
 	"log/slog"
 	"net/http"
@@ -80,10 +81,19 @@ func (h *Handler) ActivityGet(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) CalendarSelectGet(w http.ResponseWriter, r *http.Request) {
 	selectedDate := parseISO8601Date(r.URL.Query().Get("selected-date"), time.Now())
 
+	payload := map[string]any{
+		"selected-date": map[string]string{
+			"date": selectedDate.Format("2006-01-02"),
+		},
+	}
+	b, _ := json.Marshal(payload)
+	w.Header().Set("HX-Trigger", string(b))
+
 	tmplData := templates.NewCalendarData(selectedDate)
 	err := templates.RenderPartial(h.TemplateManager, w, "calendar", tmplData)
 	if err != nil {
 		h.renderInternalServerError(w, r, err)
+		return
 	}
 }
 
