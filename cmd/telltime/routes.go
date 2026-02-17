@@ -13,6 +13,7 @@ func routes(uni *universe) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", httpHandler.HomeGet)
 	mux.HandleFunc("/activity", httpHandler.ActivityGet)
+	mux.HandleFunc("/calendar/select", httpHandler.CalendarSelectGet)
 	mux.Handle("/static/", http.FileServer(http.FS(ui.Files)))
 
 	return mux

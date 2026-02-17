@@ -2,6 +2,7 @@ package httphandler
 
 import (
 	"context"
+	"time"
 	"database/sql"
 	"log/slog"
 	"net/http"
@@ -15,10 +16,10 @@ import (
 type Handler struct {
 	DB              *sql.DB
 	Queries         *dbgen.Queries
-	TemplateManager *templates.TemplateManager
+	TemplateManager *templates.Manager
 }
 
-func New(db *sql.DB, queries *dbgen.Queries, templateManager *templates.TemplateManager) *Handler {
+func New(db *sql.DB, queries *dbgen.Queries, templateManager *templates.Manager) *Handler {
 	return &Handler{
 		DB:              db,
 		Queries:         queries,
@@ -27,6 +28,12 @@ func New(db *sql.DB, queries *dbgen.Queries, templateManager *templates.Template
 }
 
 func (h *Handler) HomeGet(w http.ResponseWriter, r *http.Request) {
+	currDate := parseDate(
+		r.URL.Query().Get("curr-date"),
+		r.URL.Query().Get("time-zone"),
+		time.Now(),
+	)
+
 	if err := activity.Save(h.DB); err != nil {
 		slog.Error("serving home: failed to save activty data", "err", err)
 	}
@@ -40,6 +47,7 @@ func (h *Handler) HomeGet(w http.ResponseWriter, r *http.Request) {
 
 	tmplData := templates.NewData()
 	tmplData.ProgramStats = programStats
+	tmplData.CalendarData = templates.NewCalendarData(currDate)
 
 	err = templates.RenderPage(h.TemplateManager, w, templates.PageHome, tmplData)
 	if err != nil {
@@ -63,6 +71,22 @@ func (h *Handler) ActivityGet(w http.ResponseWriter, r *http.Request) {
 	tmplData.WindowChangeEvents = events
 
 	err = templates.RenderPage(h.TemplateManager, w, templates.PageActivity, tmplData)
+	if err != nil {
+		h.renderInternalServerError(w, r, err)
+	}
+}
+
+func (h *Handler) CalendarSelectGet(w http.ResponseWriter, r *http.Request) {
+	currDate := parseDate(
+		r.URL.Query().Get("curr-date"),
+		r.URL.Query().Get("time-zone"),
+		time.Now(),
+	)
+
+	tmplData := templates.NewData()
+	tmplData.CalendarData = templates.NewCalendarData(currDate)
+
+	err := templates.RenderPartial(h.TemplateManager, w, "calendar", tmplData)
 	if err != nil {
 		h.renderInternalServerError(w, r, err)
 	}

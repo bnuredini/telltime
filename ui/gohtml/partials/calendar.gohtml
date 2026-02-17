@@ -1,0 +1,35 @@
+{{define "calendar"}}
+<div class="max-w-xs">
+  <h3 class="h3 mb-2">{{.Day}} {{.MonthName}}</h3>
+
+  <div class="grid grid-cols-7 justify-items-center mb-2">
+    <div>Mon</div>
+    <div>Tue</div>
+    <div>Wed</div>
+    <div>Thu</div>
+    <div>Fri</div>
+    <div>Sat</div>
+    <div>Sun</div>
+  </div>
+
+  <div class="grid grid-cols-7 justify-items-center gap-y-2">
+    {{range .GapDays}}
+    <div class="w-7 h-7"></div>
+    {{end}}
+
+    {{range .MonthDays}}
+    <button
+      class="
+        flex items-center justify-center w-7 h-7 border cursor-pointer hover:bg-slate-200
+        {{if (eq $.Day (add . 1))}}
+        bg-slate-800 hover:bg-slate-800 text-white
+        {{end}}
+      "
+      hx-get="/calendar/select"
+    >
+      {{(add . 1)}}
+    </button>
+    {{end}}
+  </div>
+</div>
+{{end}}

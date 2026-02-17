@@ -1,5 +1,147 @@
 @import "tailwindcss";
 
-main > * {
-  grid-column: 2;
+:root {
+  --title-color: hsl(220, 92%, 42%);
+  --title-font: "Helvetica Neue", Helvetica, Arial, sans-serif;
+
+  --docs-nav-color: hsl(0, 0%, 0%);
+  --docs-nav-color-hover: hsl(220, 92%, 42%);
+
+  --link-line-decoration: hsl(220, 93%, 42%, 0.2);
+  --link-line-decoration-hover: hsl(220, 93%, 42%, 0.5);
+
+  --border: hsl(220, 13%, 80%);
+  --border-light: hsl(220, 13%, 90%);
+  --border-hover: hsl(220, 13%, 70%);
 }
+
+main > * {
+  @apply col-start-2 col-end-3;
+}
+
+@layer components {
+  .h1 {
+    @apply text-4xl font-semibold leading-[46px];
+  }
+
+  .h2 {
+    @apply text-2xl font-semibold leading-[40px];
+  }
+
+  .h3 {
+    @apply text-xl font-semibold leading-[32px];
+  }
+
+  .h4 {
+    @apply text-lg font-semibold leading-[28px];
+  }
+
+  .table {
+    thead th {
+      @apply px-3 py-1 font-semibold text-left border border-[color:var(--border)] bg-slate-200;
+    }
+
+    thead th:hover {
+      @apply relative bg-slate-400 cursor-pointer;
+    }
+
+    thead th:hover::after {
+      @apply absolute ml-2 mt-[0.3rem] content-["▼"] text-xs;
+    }
+  }
+
+  /*
+  These styles are to be used for documentation pages. You'll notice that
+  previous styles for elments like headings, links, and paragraphs aren't reused
+  here. Styling for this part of the site is different on purpose.
+  */
+  .doc {
+    p,
+    ul {
+      @apply my-[1em];
+    }
+
+    ul {
+      @apply leading-[1.8] list-disc list-outside pt-0 px-8 pb-4;
+    }
+
+    h1 {
+      @apply
+        my-[1.375rem]
+        text-4xl
+        leading-[46px];
+    }
+
+    h2 {
+      @apply
+        text-2xl
+        leading-[40px]
+        border-b
+        border-[color:var(--border-light)];
+    }
+
+    h3 {
+      @apply
+        text-xl
+        leading-[32px]
+        border-b
+        border-[color:var(--border-light)];
+    }
+
+    h4 {
+      @apply
+        text-lg
+        leading-[28px]
+        border-b
+        border-[color:var(--border-light)];
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      @apply relative font-[var(--title-font)] font-[480] text-[color:var(--title-color)];
+    }
+
+    h2,
+    h3,
+    h4,
+    h5 {
+      @apply mt-[2.25rem] mb-0;
+    }
+
+    h1:target::before,
+    h2:target::before,
+    h3:target::before,
+    h4:target::before,
+    h5:target::before,
+    h6:target::before {
+      @apply absolute left-[-1.5ch] content-["•"];
+    }
+
+    p {
+      @apply leading-[1.625em];
+    }
+
+    a {
+      @apply underline decoration-[color:var(--link-line-decoration)];
+    }
+
+    a:hover {
+      @apply decoration-[color:var(--link-line-decoration-hover)];
+    }
+
+    .header:link,
+    .header:visited {
+      @apply text-[color:var(--title-color)];
+    }
+
+    .header:link,
+    .header:visited:hover {
+      @apply no-underline;
+    }
+  }
+}
+

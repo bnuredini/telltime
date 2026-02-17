@@ -20,7 +20,7 @@ type universe struct {
 	DB              *sql.DB
 	Queries         *dbgen.Queries
 	Config          *conf.Config
-	TemplateManager *templates.TemplateManager
+	TemplateManager *templates.Manager
 }
 
 // TOOD: Report an error if the user tries to start the server more than once.

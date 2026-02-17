@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"html/template"
 	"io/fs"
-	"log/slog"
 	"net/http"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/bnuredini/telltime/internal/dbgen"
 	"github.com/bnuredini/telltime/internal/services/activity"
@@ -19,126 +17,168 @@ import (
 type PageName string
 
 const (
-	Page500      PageName = "500"
-	PageHome     PageName = "home"
-	PageActivity PageName = "activity"
+	baseTemplatePath     = "gohtml/base.gohtml"
+	partialsTemplateGlob = "gohtml/partials/*.gohtml"
 )
 
-type TemplateManager struct {
-	Cache map[string]*template.Template
-}
+const (
+	Page404      PageName = "404"
+	Page500      PageName = "500"
+	PageHome     PageName = "home"
+	PageSettings PageName = "settings"
+	PageActivity PageName = "activity"
+	PageDocs     PageName = "docs"
+)
 
-func NewManager() (*TemplateManager, error) {
-	result := &TemplateManager{}
-
-	cache, err := newCache()
-	if err != nil {
-		return nil, err
-	}
-
-	result.Cache = cache
-
-	return result, nil
-}
-
-type templateData struct {
+type Data struct {
 	WindowChangeEvents []dbgen.GetEventsRow
 	CategoryStats      []*activity.CategoryStat
 	ProgramStats       []*activity.ProgramStat
+	CurrentDateLabel   string
+	SelectedDateParam  string
+	ScreenTimeSecs     int64
+	ApplicationsUsed   int
+	ContextSwitches    int
+	LongestSessionSecs int64
+	MostUsedProgram    string
+	TopCategory        string
+	CalendarData       *CalendarData
 }
 
-func NewData() *templateData {
-	return &templateData{}
+type Manager struct {
+	PageCache        map[string]*template.Template
+	DocCache         map[string]*template.Template
+	PartialsTemplate *template.Template
 }
 
-var tmplFuncs = template.FuncMap{
-	"now":        time.Now,
-	"formatSecs": formatSecs,
-}
-
-func formatSecs(secs int64) string {
-	formattedHours := secs / 3600
-	formattedMins := (secs % 3600) / 60
-	formattedSecs := secs % 60
-
-	var b strings.Builder
-
-	if formattedHours > 0 {
-		fmt.Fprintf(&b, "%dh", formattedHours)
-	}
-	if formattedMins > 0 {
-		if b.Len() > 0 {
-			b.WriteByte(' ')
-		}
-		fmt.Fprintf(&b, "%dm", formattedMins)
-	}
-	if formattedSecs > 0 || b.Len() == 0 {
-		if b.Len() > 0 {
-			b.WriteByte(' ')
-		}
-		fmt.Fprintf(&b, "%ds", formattedSecs)
-	}
-
-	return b.String()
-}
-
-func newCache() (map[string]*template.Template, error) {
-	result := make(map[string]*template.Template)
-
-	pages, err := fs.Glob(ui.Files, "html/pages/*.gohtml")
+func NewManager() (*Manager, error) {
+	pageCache, err := newPageCache()
 	if err != nil {
 		return nil, err
 	}
 
-	for _, page := range pages {
-		pageFileName := filepath.Base(page)
+	docCache, err := newDocCache()
+	if err != nil {
+		return nil, err
+	}
 
-		bits := []string{
-			"html/base.gohtml",
-			"html/partials/*.gohtml",
-			page,
-		}
+	partialTemplate, err := template.New("base").Funcs(tmplFuncs).ParseFS(ui.Files, partialsTemplateGlob)
+	if err != nil {
+		return nil, err
+	}
 
-		tmpl, err := template.New(pageFileName).Funcs(tmplFuncs).ParseFS(ui.Files, bits...)
+	return &Manager{
+		PageCache:        pageCache,
+		DocCache:         docCache,
+		PartialsTemplate: partialTemplate,
+	}, nil
+}
+
+func NewData() *Data {
+	return &Data{}
+}
+
+func newPageCache() (map[string]*template.Template, error) {
+	return generateCacheFromGlob(
+		"gohtml/pages/*.gohtml",
+		func(filePath string) []string {
+			return []string{baseTemplatePath, partialsTemplateGlob, filePath}
+		},
+	)
+}
+
+func newDocCache() (map[string]*template.Template, error) {
+	return generateCacheFromGlob(
+		"gohtml/docs/*.gohtml",
+		func(filePath string) []string {
+			return []string{baseTemplatePath, partialsTemplateGlob, "gohtml/pages/docs.gohtml", filePath}
+		},
+	)
+}
+
+// generateCacheFromGlob builds a cache of templates. Every key is derived from
+// a template found in globPattern and every associated value is a template set
+// that contains that template plus the files returned by buildTemplateBits.
+func generateCacheFromGlob(
+	globPattern string,
+	buildTemplateBits func(filePath string) []string,
+) (map[string]*template.Template, error) {
+	filePaths, err := fs.Glob(ui.Files, globPattern)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]*template.Template, len(filePaths))
+	for _, filePath := range filePaths {
+		bits := buildTemplateBits(filePath)
+		tmpl, err := template.New("base").Funcs(tmplFuncs).ParseFS(ui.Files, bits...)
 		if err != nil {
 			return nil, err
 		}
 
-		result[pageFileName] = tmpl
+		result[cacheKeyFromPath(filePath)] = tmpl
 	}
 
 	return result, nil
 }
 
+func cacheKeyFromPath(filePath string) string {
+	return strings.TrimSuffix(filepath.Base(filePath), filepath.Ext(filePath))
+}
+
 func RenderPage(
-	manager *TemplateManager,
+	manager *Manager,
 	w http.ResponseWriter,
 	pageName PageName,
-	tmplData *templateData,
+	tmplData *Data,
 ) error {
-
-	pageKey := fmt.Sprintf("%s.gohtml", pageName)
-	tmpl := manager.Cache[pageKey]
-
+	tmpl := manager.PageCache[string(pageName)]
 	if tmpl == nil {
-		slog.Info("couldn't get tempalte from cache; now generating it...")
-
-		bits := []string{
-			"html/base.gohtml",
-			"html/partials/*.gohtml",
-			fmt.Sprintf("html/pages/%s.gohtml", pageName),
-		}
-
-		tmplName := fmt.Sprintf("%s.gohtml", pageName)
-		var err error
-		tmpl, err = template.New(tmplName).Funcs(tmplFuncs).ParseFS(ui.Files, bits...)
-		if err != nil {
-			return err
-		}
+		tmpl = manager.PageCache[string(Page404)]
 	}
 
+	return writeTemplate(w, tmpl, "base", tmplData)
+}
+
+func RenderDoc(
+	manager *Manager,
+	w http.ResponseWriter,
+	docName string,
+	tmplData *Data,
+) error {
+	tmpl := manager.DocCache[string(docName)]
+	if tmpl == nil {
+		tmpl = manager.PageCache[string(Page404)]
+	}
+
+	return writeTemplate(w, tmpl, "base", tmplData)
+}
+
+func RenderPartial(
+	manager *Manager,
+	w http.ResponseWriter,
+	partialName string,
+	tmplData *Data,
+) error {
+	if manager.PartialsTemplate == nil {
+		return fmt.Errorf("partial templates were not initialized")
+	}
+
+	if manager.PartialsTemplate.Lookup(partialName) == nil {
+		return fmt.Errorf("partial template %q was not found in cache", partialName)
+	}
+
+	return writeTemplate(w, manager.PartialsTemplate, partialName, tmplData)
+}
+
+func writeTemplate(
+	w http.ResponseWriter,
+	tmpl *template.Template,
+	templateName string,
+	tmplData *Data,
+) error {
 	buf := new(bytes.Buffer)
-	err := tmpl.ExecuteTemplate(buf, "base", tmplData)
+	err := tmpl.ExecuteTemplate(buf, templateName, tmplData)
 	if err != nil {
 		return err
 	}
