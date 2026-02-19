@@ -30,7 +30,8 @@ func main() {
 		log.Fatalf("failed to parse the config: %v", err)
 	}
 
-	setUpLogging(&config)
+	logFile := setUpLogging(&config)
+	defer logFile.Close()
 
 	dbConn, err := openDB(config.DBConnStr)
 	if err != nil {
@@ -89,20 +90,24 @@ func startServer(uni *universe) error {
 	return nil
 }
 
-func setUpLogging(config *conf.Config) {
-	if config.LogToFile {
-		logFile, err := os.OpenFile(
-			config.LogFilePath,
-			os.O_APPEND|os.O_CREATE|os.O_WRONLY,
-			0666,
-		)
-		if err != nil {
-			log.Fatalf("failed to create %q: %v", config.LogFilePath, err)
-		}
-
-		logOpts := &slog.HandlerOptions{Level: slog.Level(config.LogLevel)}
-		logHandler := slog.NewTextHandler(logFile, logOpts)
-		logger := slog.New(logHandler)
-		slog.SetDefault(logger)
+func setUpLogging(config *conf.Config) *os.File {
+	if !config.LogToFile {
+		return nil
 	}
+
+	logFile, err := os.OpenFile(
+		config.LogFilePath,
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
+		0666,
+	)
+	if err != nil {
+		log.Fatalf("failed to create %q: %v", config.LogFilePath, err)
+	}
+
+	logOpts := &slog.HandlerOptions{Level: slog.Level(config.LogLevel)}
+	logHandler := slog.NewTextHandler(logFile, logOpts)
+	logger := slog.New(logHandler)
+	slog.SetDefault(logger)
+
+	return logFile
 }
