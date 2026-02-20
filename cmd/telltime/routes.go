@@ -14,6 +14,7 @@ func routes(uni *universe) http.Handler {
 	mux.HandleFunc("/", httpHandler.HomeGet)
 	mux.HandleFunc("/activity", httpHandler.ActivityGet)
 	mux.HandleFunc("/calendar/select", httpHandler.CalendarSelectGet)
+	mux.HandleFunc("/most-used-programs", httpHandler.MostUsedProgramsGet)
 	mux.Handle("/static/", http.FileServer(http.FS(ui.Files)))
 
 	return mux

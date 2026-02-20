@@ -2,6 +2,7 @@ package templates
 
 import (
 	"bytes"
+	"time"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -43,6 +44,7 @@ type Data struct {
 	MostUsedProgram    string
 	TopCategory        string
 	CalendarData       *CalendarData
+	Temp			   time.Time
 }
 
 type Manager struct {

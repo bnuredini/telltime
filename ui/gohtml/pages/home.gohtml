@@ -1,16 +1,8 @@
 {{define "title"}}Home{{end}}
 
 {{define "main"}}
-<input type="hidden" id="selected-date" name="selected-date" value="">
-
-<div class="flex">
+<div class="flex gap-12">
   {{template "calendar" .CalendarData}}
-  {{template "program-stats" .}}
+  {{template "most-used-programs" .}}
 </div>
-
-<script>
-document.body.addEventListener("selected-date", (e) => {
-  document.getElementById("selected-date").value = e.detail.date;
-})
-</script>
 {{end}}

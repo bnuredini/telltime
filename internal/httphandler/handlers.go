@@ -97,6 +97,17 @@ func (h *Handler) CalendarSelectGet(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h *Handler) MostUsedProgramsGet(w http.ResponseWriter, r *http.Request) {
+	selectedDate := parseISO8601Date(r.URL.Query().Get("date"), time.Now())
+
+	tmplData := templates.NewData()
+	tmplData.Temp = selectedDate
+	err := templates.RenderPartial(h.TemplateManager, w, "most-used-programs", tmplData)
+	if err != nil {
+		h.renderInternalServerError(w, r, err)
+	}
+}
+
 func (h *Handler) renderInternalServerError(w http.ResponseWriter, r *http.Request, err error) {
 	log.Printf("%s\n%s\n", err.Error(), debug.Stack())
 
