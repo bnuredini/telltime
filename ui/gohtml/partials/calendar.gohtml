@@ -21,10 +21,10 @@
       hx-get="/calendar/select"
       hx-swap="outerHTML"
       hx-target="#calendar"
-      hx-vals="js:{'selected-date': this.dataset.date}"
+      hx-vals="js:{'date': this.dataset.date}"
       class="w-7 h-7 rounded-full bg-black hover:bg-gray-700 text-white font-semibold cursor-pointer"
     >
-      <
+      &lt
     </button>
     <h3 class="flex-1 h3 mb-2 text-center">{{.MonthName}} {{.Year}}</h3>
     <button
@@ -32,10 +32,10 @@
       hx-get="/calendar/select"
       hx-swap="outerHTML"
       hx-target="#calendar"
-      hx-vals="js:{'selected-date': this.dataset.date}"
+      hx-vals="js:{'date': this.dataset.date}"
       class="w-7 h-7 rounded-full bg-black hover:bg-gray-700 text-white font-semibold cursor-pointer"
     >
-      >
+      &gt
     </button>
   </div>
 
@@ -60,7 +60,7 @@
       hx-get="/calendar/select"
       hx-swap="outerHTML"
       hx-target="#calendar"
-      hx-vals='js:{"selected-date": this.dataset.date}'
+      hx-vals='js:{"date": this.dataset.date}'
       class="
         flex items-center justify-center w-7 h-7 border cursor-pointer hover:bg-slate-200
         {{if (eq $.Day (add . 1))}}

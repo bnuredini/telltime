@@ -1,19 +1,72 @@
 {{define "most-used-programs"}}
 <div
+  data-selected-date="{{.SelectedDate}}"
+  data-order-by="{{.OrderBy}}"
+  data-order-direction="{{.OrderDirection}}"
   hx-get="/most-used-programs"
   hx-trigger="selected-date from:body"
-  hx-vals="js:{date: event.detail.date}"
+  hx-vals='js:{
+    date: event.detail.date,
+    "order-by": this.dataset.orderBy || "name",
+    "order-direction": this.dataset.orderDirection || "desc"
+  }'
   hx-swap="outerHTML"
+  id="most-used-programs"
 >
   <h3 class="h3 mb-2">Most used programs</h3>
-  <h4>{{.Temp}}</h4>
 
   <div class="overflow-x-auto">
     <table class="w-full table">
       <thead>
         <tr>
-          <th>Program name</th>
-          <th>Duration</th>
+          <th
+            hx-get="/most-used-programs"
+            hx-trigger="click"
+            hx-target="#most-used-programs"
+            hx-swap="outerHTML"
+            hx-vals='js:{
+              date: document.querySelector("#most-used-programs")?.dataset.selectedDate,
+              "order-by": "name",
+              "order-direction":
+                (
+                  document.querySelector("#most-used-programs")?.dataset.orderBy == "name" &&
+                  document.querySelector("#most-used-programs")?.dataset.orderDirection == "desc"
+                ) ? "asc" : "desc"
+            }'
+            class='
+              px-8
+              {{if eq .OrderBy "name"}}
+                {{if eq .OrderDirection "desc"}} desc selected
+                {{else}} asc selected {{end}}
+              {{end}}
+            '
+          >
+            Program name
+          </th>
+          <th
+            hx-get="/most-used-programs"
+            hx-trigger="click"
+            hx-target="#most-used-programs"
+            hx-swap="outerHTML"
+            hx-vals='js:{
+              date: document.querySelector("#most-used-programs")?.dataset.selectedDate,
+              "order-by": "duration",
+              "order-direction":
+                (
+                  document.querySelector("#most-used-programs")?.dataset.orderBy == "duration" &&
+                  document.querySelector("#most-used-programs")?.dataset.orderDirection == "desc"
+                ) ? "asc" : "desc"
+            }'
+            class='
+              px-8
+              {{if eq .OrderBy "duration"}}
+                {{if eq .OrderDirection "desc"}} desc selected
+                {{else}} asc selected {{end}}
+              {{end}}
+            '
+          >
+            Duration
+          </th>
         </tr>
       </thead>
       <tbody>

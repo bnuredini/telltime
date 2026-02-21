@@ -159,7 +159,16 @@ func GetProgramStats(
 	return result, nil
 }
 
-func GetIntervalFromStartOfDay() (start time.Time, end time.Time) {
+func GetProgramStatsForDate(
+	ctx context.Context,
+	q *dbgen.Queries,
+	date time.Time,
+) ([]*ProgramStat, error) {
+	start, end := GetDayIntervalForDate(date)
+	return GetProgramStats(ctx, q, start, end)
+}
+
+func GetDayInterval() (start time.Time, end time.Time) {
 	now := time.Now()
 	if now.Hour() >= StartOfDayHour {
 		start = time.Date(now.Year(), now.Month(), now.Day(), 4, 0, 0, 0, now.Location())
@@ -169,6 +178,13 @@ func GetIntervalFromStartOfDay() (start time.Time, end time.Time) {
 	}
 
 	return start, now
+}
+
+func GetDayIntervalForDate(date time.Time) (start time.Time, end time.Time) {
+	start = time.Date(date.Year(), date.Month(), date.Day(), 4, 0, 0, 0, date.Location())
+	end = time.Date(date.Year(), date.Month(), date.Day(), 23, 59, 59, 59, date.Location())
+
+	return
 }
 
 func updateCurrentActivity(windowID, windowClass, windowName string) {

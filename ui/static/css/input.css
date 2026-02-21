@@ -48,6 +48,16 @@ main > * {
     thead th:hover::after {
       @apply absolute ml-2 mt-[0.3rem] content-["▼"] text-xs;
     }
+
+    thead th.selected.desc::after {
+      content: "▼";
+      @apply absolute ml-2 mt-[0.3rem] text-xs;
+    }
+
+    thead th.selected.asc::after {
+      content: "▲";
+      @apply absolute ml-2 mt-[0.3rem] text-xs;
+    }
   }
 
   /*
@@ -144,4 +154,3 @@ main > * {
     }
   }
 }
-

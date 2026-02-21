@@ -8,6 +8,8 @@ import (
 	"log/slog"
 	"net/http"
 	"runtime/debug"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/bnuredini/telltime/internal/dbgen"
@@ -40,7 +42,7 @@ func (h *Handler) HomeGet(w http.ResponseWriter, r *http.Request) {
 		slog.Error("serving home: failed to save activty data", "err", err)
 	}
 
-	start, end := activity.GetIntervalFromStartOfDay()
+	start, end := activity.GetDayInterval()
 	programStats, err := activity.GetProgramStats(context.Background(), h.Queries, start, end)
 	if err != nil {
 		h.renderInternalServerError(w, r, err)
@@ -50,6 +52,7 @@ func (h *Handler) HomeGet(w http.ResponseWriter, r *http.Request) {
 	tmplData := templates.NewData()
 	tmplData.ProgramStats = programStats
 	tmplData.CalendarData = templates.NewCalendarData(currDate)
+	tmplData.SelectedDate = time.Now().Format("2006-01-02")
 
 	err = templates.RenderPage(h.TemplateManager, w, templates.PageHome, tmplData)
 	if err != nil {
@@ -79,7 +82,7 @@ func (h *Handler) ActivityGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) CalendarSelectGet(w http.ResponseWriter, r *http.Request) {
-	selectedDate := parseISO8601Date(r.URL.Query().Get("selected-date"), time.Now())
+	selectedDate := parseISO8601Date(r.URL.Query().Get("date"), time.Now())
 
 	payload := map[string]any{
 		"selected-date": map[string]string{
@@ -99,10 +102,51 @@ func (h *Handler) CalendarSelectGet(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) MostUsedProgramsGet(w http.ResponseWriter, r *http.Request) {
 	selectedDate := parseISO8601Date(r.URL.Query().Get("date"), time.Now())
+	orderBy := r.URL.Query().Get("order-by")
+	if strings.TrimSpace(orderBy) == "" {
+		orderBy = "name"
+	}
+
+	orderDirection := r.URL.Query().Get("order-direction")
+	if strings.TrimSpace(orderDirection) == "" {
+		orderDirection = "desc"
+	}
+
+	programStats, err := activity.GetProgramStatsForDate(context.Background(), h.Queries, selectedDate)
+	if err != nil {
+		h.renderInternalServerError(w, r, err)
+		return
+	}
+
+	sort.Slice(programStats, func(i, j int) bool {
+		asc := strings.EqualFold(orderDirection, "asc")
+
+		switch orderBy {
+		case "name":
+			if asc {
+				return programStats[i].ProgramName < programStats[j].ProgramName
+			}
+			return programStats[i].ProgramName > programStats[j].ProgramName
+
+		case "duration":
+			if asc {
+				return programStats[i].DurationSecs < programStats[j].DurationSecs
+			}
+			return programStats[i].DurationSecs > programStats[j].DurationSecs
+
+		default:
+			return programStats[i].DurationSecs > programStats[j].DurationSecs
+		}
+	})
 
 	tmplData := templates.NewData()
 	tmplData.Temp = selectedDate
-	err := templates.RenderPartial(h.TemplateManager, w, "most-used-programs", tmplData)
+	tmplData.ProgramStats = programStats
+	tmplData.SelectedDate = r.URL.Query().Get("date")
+	tmplData.OrderBy = orderBy
+	tmplData.OrderDirection = orderDirection
+
+	err = templates.RenderPartial(h.TemplateManager, w, "most-used-programs", tmplData)
 	if err != nil {
 		h.renderInternalServerError(w, r, err)
 	}

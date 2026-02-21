@@ -2,13 +2,13 @@ package templates
 
 import (
 	"bytes"
-	"time"
 	"fmt"
 	"html/template"
 	"io/fs"
 	"net/http"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/bnuredini/telltime/internal/dbgen"
 	"github.com/bnuredini/telltime/internal/services/activity"
@@ -44,7 +44,10 @@ type Data struct {
 	MostUsedProgram    string
 	TopCategory        string
 	CalendarData       *CalendarData
-	Temp			   time.Time
+	Temp               time.Time
+	SelectedDate       string
+	OrderBy            string
+	OrderDirection     string
 }
 
 type Manager struct {
