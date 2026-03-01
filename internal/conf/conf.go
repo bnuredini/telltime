@@ -6,10 +6,13 @@ import (
 
 	"flag"
 	"fmt"
+	"strings"
 	"log"
 	"path/filepath"
 	"reflect"
 	"time"
+	"runtime"
+	"slices"
 )
 
 var (
@@ -26,10 +29,24 @@ type Config struct {
 	RecordWindowTitles  bool
 	WindowCheckInterval int
 	SaveInterval        int
+	OS string
+	DisplayServer string
 }
 
 const (
 	ProgramName = "telltime"
+)
+
+const (
+	OSDarwin  = "darwin"
+	OSFreeBSD = "freebsd"
+	OSLinux   = "linux"
+	OSWindows = "windows"
+)
+
+const (
+	DisplayServerX = "X"
+	DisplayServerWayland = "wayland"
 )
 
 var (
@@ -134,6 +151,38 @@ func Init() (Config, error) {
 			config.LogLevel,
 		)
 		return Config{}, err
+	}
+	
+	operatingSystem := runtime.GOOS
+	supportedOperatingSystems := []string{OSLinux, OSWindows, OSDarwin}
+	if !slices.Contains(supportedOperatingSystems, operatingSystem) {
+		err = fmt.Errorf(
+			"%v is not a supported operating system (expected one of these values: %v)",
+			operatingSystem,
+			supportedOperatingSystems,
+		)
+		return Config{}, err
+	}
+	
+	config.OS = operatingSystem
+	
+	if operatingSystem == OSLinux {
+		displayServer := os.Getenv("XDG_SESSION_TYPE")
+		supportedDisplayServers := []string{DisplayServerX, DisplayServerWayland}
+		
+		if strings.TrimSpace(displayServer) == "" {
+			log.Print("warning: display server is missing, defaulting to X")
+			displayServer = DisplayServerX
+		} else if !slices.Contains(supportedDisplayServers, displayServer) {
+			err = fmt.Errorf(
+				"%v is not a supported display server (expected one of these values: %v)",
+				displayServer,
+				supportedDisplayServers,
+			)
+			return Config{}, err
+		}
+		
+		config.DisplayServer = displayServer
 	}
 
 	printConfig(config)
